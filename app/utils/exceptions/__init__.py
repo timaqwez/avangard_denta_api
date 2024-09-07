@@ -22,7 +22,7 @@ from .base import ApiException
 from .exercise import InvalidExerciseType
 from .image import InvalidFileType, TooLargeFile
 from .main import ModelAlreadyExist, ModelDoesNotExist, NoRequiredParameters, NotEnoughPermissions, NegativeInteger, \
-    WrongTasksToken
+    WrongTasksToken, NoRequiredKeysForString
 from .meal import InvalidMealType
 from .product import InvalidProductList, InvalidProductType, InvalidUnit
 from .service import InvalidServiceQuestionList

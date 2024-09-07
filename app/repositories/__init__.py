@@ -29,3 +29,4 @@ from .click import ClickRepository
 from .referral import ReferralRepository
 from .client import ClientRepository
 from .lead import LeadRepository
+from .sms import SmsRepository

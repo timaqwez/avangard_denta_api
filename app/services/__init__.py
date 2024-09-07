@@ -31,3 +31,4 @@ from .click import ClickService
 from .referral import ReferralService
 from .client import ClientService
 from .lead import LeadService
+from .sms import SmsService

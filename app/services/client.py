@@ -21,7 +21,6 @@ from pydantic import Json
 
 from app.db.models import Referral, Session, Client, Partner, Promotion
 from app.repositories import ClientRepository
-from app.services import ReferralService
 from app.services.base import BaseService
 from app.utils.decorators import session_required, tasks_token_required
 from app.utils.exceptions import ModelAlreadyExist
@@ -33,148 +32,36 @@ class ClientService(BaseService):
     async def create_by_admin(
             self,
             session: Session,
-            user_id: int,
-            firstname: str,
-            email: str,
+            fullname: str,
             phone: str,
-            lastname: str = None,
-            surname: str = None,
-            is_partner: bool = None,
+            email: str = None,
+            is_partner: bool = False,
+            return_model: bool = False,
     ):
         client = await ClientRepository().create(
-            user_id=user_id,
-            firstname=firstname,
+            fullname=fullname,
             email=email,
-            lastname=lastname,
-            surname=surname,
             is_partner=is_partner,
             phone=phone,
         )
 
-        action_parameters = {
-            'creator': f'session_{session.id}',
-            'user': user_id,
-            'firstname': firstname,
-            'email': email,
-            'phone': phone,
-            'by_admin': True,
-        }
-        if lastname:
-            action_parameters['lastname'] = lastname
-        if surname:
-            action_parameters['surname'] = surname
-
         await self.create_action(
             model=client,
             action='create',
-            parameters=action_parameters,
+            parameters={
+                'creator': f'session_{session.id}',
+                'fullname': fullname,
+                'email': email,
+                'phone': phone,
+                'is_partner': is_partner,
+                'by_admin': True,
+            }
         )
+
+        if return_model:
+            return client
 
         return {'id': client.id}
-
-    async def get_or_create_by_task(
-            self,
-            user_id: int,
-            firstname: str,
-            email: str,
-            phone: str,
-            lastname: str = None,
-            surname: str = None,
-            is_partner: bool = None,
-    ):
-        client = await ClientRepository().get_or_create(
-            user_id=user_id,
-            firstname=firstname,
-            email=email,
-            phone=phone,
-            lastname=lastname,
-            surname=surname,
-            is_partner=is_partner,
-        )
-
-        update_parameters = {}
-
-        if client.firstname != firstname:
-            update_parameters['firstname'] = firstname
-        if client.email != email:
-            update_parameters['email'] = email
-        if client.phone != phone:
-            update_parameters['phone'] = phone
-        if lastname is not None and client.lastname != lastname:
-            update_parameters['lastname'] = lastname
-        if surname is not None and client.surname != surname:
-            update_parameters['surname'] = surname
-        if is_partner is not None and client.is_partner != is_partner:
-            update_parameters['is_partner'] = is_partner
-
-        if len(update_parameters.keys()) > 0:
-            update_parameters['client'] = client
-            await self.update_by_task(**update_parameters)
-
-        action_parameters = {
-            'creator': 'sync_task',
-            'user': user_id,
-            'firstname': firstname,
-            'email': email,
-            'phone': phone,
-            'by_admin': True,
-        }
-        if lastname:
-            action_parameters['lastname'] = lastname
-        if surname:
-            action_parameters['surname'] = surname
-
-        await self.create_action(
-            model=client,
-            action='create',
-            parameters=action_parameters,
-        )
-
-        return client
-
-    async def update_by_task(
-            self,
-            client: Client,
-            firstname: str = None,
-            email: str = None,
-            phone: str = None,
-            lastname: str = None,
-            surname: str = None,
-            is_partner: bool = None,
-    ):
-        action_parameters = {
-            'creator': 'sync_task',
-        }
-        if firstname:
-            action_parameters['firstname'] = firstname
-        if email:
-            action_parameters['email'] = email
-        if phone:
-            action_parameters['phone'] = phone
-        if lastname:
-            action_parameters['lastname'] = lastname
-        if surname:
-            action_parameters['surname'] = surname
-        if is_partner:
-            action_parameters['is_partner'] = is_partner
-
-        await ClientRepository().update(
-            model=client,
-            firstname=firstname,
-            email=email,
-            phone=phone,
-            lastname=lastname,
-            surname=surname,
-            is_partner=is_partner,
-        )
-
-        await self.create_action(
-            model=client,
-            action='update',
-            parameters=action_parameters,
-        )
-
-        return {}
 
     @session_required(permissions=['clients'], can_root=True)
     async def delete_by_admin(
@@ -225,68 +112,65 @@ class ClientService(BaseService):
             ]
         }
 
-    @tasks_token_required()
-    async def sync_1c(self, data: Json):
-        clients = loads(data, object_hook=lambda d: SimpleNamespace(**d))
-        bonuses = []
-        for client in clients:
-            client_inst = await self.get_or_create_by_task(
-                user_id=client.user_id,
-                firstname=client.firstname,
-                lastname=client.lastname,
-                surname=client.surname,
-                email=client.email,
-                phone=client.phone,
-                is_partner=client.is_partner,
-            )
-            if client.bonus_code:
-                try:
-                    referral_inst: Referral = await ReferralService().create_by_task(
-                        code=client.bonus_code,
-                        client_id=client_inst.id,
-                    )
-                    partner: Partner = referral_inst.partner
-                    promotion: Promotion = partner.promotion
-
-                    await sms_request(
-                        phone_number=partner.client.phone,
-                        message=promotion.sms_text_for_referral.format(
-                            fullname=' '.join(filter(None, [client.lastname, client.firstname, client.surname])),
-                            referrer_bonus=promotion.referrer_bonus,
-                        )
-                    )
-                    await sms_request(
-                        phone_number=client.phone,
-                        message=promotion.sms_text_for_referral.format(
-                            name=client.firstname,
-                            referral_bonus=promotion.referral_bonus,
-                        )
-                    )
-
-                    bonuses.append(
-                        {
-                            'user_id': partner.client.id,
-                            'operation': 'add',
-                            'amount': promotion.referrer_bonus,
-                        }
-                    )
-                    bonuses.append(
-                        {
-                            'user_id': client_inst.id,
-                            'operation': 'add',
-                            'amount': promotion.referral_bonus,
-                        }
-                    )
-                except ModelAlreadyExist:
-                    pass
-        return bonuses
+    # @tasks_token_required()
+    # async def sync_1c(self, data: Json):
+    #     clients = loads(data, object_hook=lambda d: SimpleNamespace(**d))
+    #     bonuses = []
+    #     for client in clients:
+    #         client_inst = await self.get_or_create_by_task(
+    #             user_id=client.user_id,
+    #             fullname=client.fullname,
+    #             email=client.email,
+    #             phone=client.phone,
+    #             is_partner=client.is_partner,
+    #         )
+    #         if client.bonus_code:
+    #             try:
+    #                 referral_inst: Referral = await ReferralService().create_by_task(
+    #                     code=client.bonus_code,
+    #                     client_id=client_inst.id,
+    #                 )
+    #                 partner: Partner = referral_inst.partner
+    #                 promotion: Promotion = partner.promotion
+    #
+    #                 await sms_request(
+    #                     phone_number=partner.client.phone,
+    #                     message=promotion.sms_text_for_referral.format(
+    #                         fullname=client.fullname,
+    #                         referrer_bonus=promotion.referrer_bonus,
+    #                     )
+    #                 )
+    #                 await sms_request(
+    #                     phone_number=client.phone,
+    #                     message=promotion.sms_text_for_referral.format(
+    #                         name=client.fullname,
+    #                         referral_bonus=promotion.referral_bonus,
+    #                     )
+    #                 )
+    #
+    #                 bonuses.append(
+    #                     {
+    #                         'user_id': partner.client.id,
+    #                         'operation': 'add',
+    #                         'amount': promotion.referrer_bonus,
+    #                     }
+    #                 )
+    #                 bonuses.append(
+    #                     {
+    #                         'user_id': client_inst.id,
+    #                         'operation': 'add',
+    #                         'amount': promotion.referral_bonus,
+    #                     }
+    #                 )
+    #             except ModelAlreadyExist:
+    #                 pass
+    #     return bonuses
 
     @staticmethod
     async def generate_client_dict(client: Client):
         return {
             'id': client.id,
-            'user_id': client.user_id,
-            'fullname': f'{client.lastname or ""} {client.firstname or ""} {client.surname or ""}',
+            'fullname': client.fullname,
             'email': client.email,
             'phone': client.phone,
             'is_partner': client.is_partner,

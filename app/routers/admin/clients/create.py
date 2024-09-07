@@ -28,12 +28,9 @@ router = Router(
 
 class ClientCreateByAdminSchema(BaseModel):
     token: str = Field(min_length=32, max_length=64)
-    user_id: PositiveInt = Field()
-    firstname: str = Field(max_length=32)
-    lastname: str = Field(max_length=32)
-    surname: Optional[str] = Field(max_length=32, default=None)
-    email: str = Field(max_length=128)
+    fullname: str = Field()
     phone: str = Field(max_length=16)
+    email: Optional[str] = Field(max_length=128, default=None)
     is_partner: Optional[bool] = Field()
 
 
@@ -41,10 +38,7 @@ class ClientCreateByAdminSchema(BaseModel):
 async def route(schema: ClientCreateByAdminSchema):
     result = await ClientService().create_by_admin(
         token=schema.token,
-        user_id=schema.user_id,
-        firstname=schema.firstname,
-        lastname=schema.lastname,
-        surname=schema.surname,
+        fullname=schema.fullname,
         email=schema.email,
         phone=schema.phone,
         is_partner=schema.is_partner,

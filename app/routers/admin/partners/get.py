@@ -13,19 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from datetime import datetime, timezone
-
-from peewee import PrimaryKeyField, IntegerField, DateTimeField, CharField, BooleanField
-from .base import BaseModel
 
 
-class Client(BaseModel):
-    id = PrimaryKeyField()
-    fullname = CharField(max_length=128, null=False)
-    email = CharField(max_length=128, null=False)
-    phone = CharField(max_length=16, null=False)
-    is_partner = BooleanField(default=False)
-    created_at = DateTimeField(default=lambda: datetime.now(tz=timezone.utc))
+from fastapi import Depends
+from pydantic import BaseModel, Field
 
-    class Meta:
-        db_table = 'clients'
+from app.services import PartnerService
+from app.utils import Router, Response
+
+
+router = Router(
+    prefix='/get',
+)
+
+
+class PartnerGetByAdminSchema(BaseModel):
+    token: str = Field(min_length=32, max_length=64)
+    code: str = Field(max_length=6)
+
+
+@router.get()
+async def route(schema: PartnerGetByAdminSchema = Depends()):
+    result = await PartnerService().get_by_admin(
+        code=schema.code,
+        token=schema.token,
+    )
+    return Response(**result)

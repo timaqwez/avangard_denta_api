@@ -13,19 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from datetime import datetime, timezone
-
-from peewee import PrimaryKeyField, IntegerField, DateTimeField, CharField, BooleanField
-from .base import BaseModel
 
 
-class Client(BaseModel):
-    id = PrimaryKeyField()
-    fullname = CharField(max_length=128, null=False)
-    email = CharField(max_length=128, null=False)
-    phone = CharField(max_length=16, null=False)
-    is_partner = BooleanField(default=False)
-    created_at = DateTimeField(default=lambda: datetime.now(tz=timezone.utc))
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
-    class Meta:
-        db_table = 'clients'
+from app.tasks.permanents.sync_gd.syncers import sync as go_sync_gd
+
+
+async def sync_gd():
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(go_sync_gd, trigger=CronTrigger.from_crontab('*/2 * * * *'))
+    scheduler.start()

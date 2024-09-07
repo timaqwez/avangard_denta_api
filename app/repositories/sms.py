@@ -13,19 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from datetime import datetime, timezone
 
-from peewee import PrimaryKeyField, IntegerField, DateTimeField, CharField, BooleanField
-from .base import BaseModel
+from app.db.models import Sms
+from app.repositories.base import BaseRepository
 
 
-class Client(BaseModel):
-    id = PrimaryKeyField()
-    fullname = CharField(max_length=128, null=False)
-    email = CharField(max_length=128, null=False)
-    phone = CharField(max_length=16, null=False)
-    is_partner = BooleanField(default=False)
-    created_at = DateTimeField(default=lambda: datetime.now(tz=timezone.utc))
-
-    class Meta:
-        db_table = 'clients'
+class SmsRepository(BaseRepository):
+    model = Sms

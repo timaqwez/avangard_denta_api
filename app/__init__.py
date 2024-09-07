@@ -43,12 +43,6 @@ app.add_middleware(
 )
 [app.include_router(router) for router in routers]
 
-origins = [
-    "http://localhost",
-    "http://localhost:1011",
-    "http://127.1.0.0:1011",
-    "http://127.1.0.0",
-]
 
 # noinspection PyTypeChecker
 app.add_middleware(

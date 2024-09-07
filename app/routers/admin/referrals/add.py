@@ -14,18 +14,31 @@
 # limitations under the License.
 #
 
-from app.utils import Router
-from .get import router as router_get
-from .get_list import router as router_get_list
-from .add import router as router_add
+
+from pydantic import BaseModel, Field
+
+from app.services import ReferralService
+from app.utils import Router, Response
 
 
 router = Router(
-    prefix='/referrals',
-    routes_included=[
-        router_get,
-        router_get_list,
-        router_add,
-    ],
-    tags=['Referrals'],
+    prefix='/add',
 )
+
+
+class ReferralAddByAdminSchema(BaseModel):
+    token: str = Field(min_length=32, max_length=64)
+    code: str = Field(max_length=6)
+    name: str = Field(min_length=1, max_length=32)
+    phone: str = Field(min_length=1, max_length=16)
+
+
+@router.post()
+async def route(schema: ReferralAddByAdminSchema):
+    result = await ReferralService().add_by_admin(
+        token=schema.token,
+        code=schema.code,
+        name=schema.name,
+        phone=schema.phone,
+    )
+    return Response(**result)

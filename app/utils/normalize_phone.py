@@ -13,19 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from datetime import datetime, timezone
-
-from peewee import PrimaryKeyField, IntegerField, DateTimeField, CharField, BooleanField
-from .base import BaseModel
 
 
-class Client(BaseModel):
-    id = PrimaryKeyField()
-    fullname = CharField(max_length=128, null=False)
-    email = CharField(max_length=128, null=False)
-    phone = CharField(max_length=16, null=False)
-    is_partner = BooleanField(default=False)
-    created_at = DateTimeField(default=lambda: datetime.now(tz=timezone.utc))
+import re
 
-    class Meta:
-        db_table = 'clients'
+
+def normalize_phone_number(phone: str) -> str:
+    digits = re.sub(r'\D', '', phone)
+    if len(digits) == 11 and (digits.startswith('8') or digits.startswith('7')):
+        return '+7' + digits[1:]
+    elif len(digits) == 10:
+        return '+7' + digits
+    else:
+        raise ValueError(f'Некорректный формат номера телефона: {phone}')

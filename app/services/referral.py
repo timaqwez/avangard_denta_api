@@ -14,12 +14,13 @@
 # limitations under the License.
 #
 
-from datetime import datetime, timezone
-
-from app.services.base import BaseService
+from app.db.models import Referral, Session, Promotion, Partner, Client
 from app.repositories import ReferralRepository, PartnerRepository, ClientRepository
-from app.db.models import Referral, Session
-from app.utils.decorators import session_required, tasks_token_required
+from app.services.sms import SmsService
+from app.services.base import BaseService
+from app.services.client import ClientService
+from app.utils.decorators import session_required
+from app.utils.sms_request import sms_request
 
 
 class ReferralService(BaseService):
@@ -49,7 +50,7 @@ class ReferralService(BaseService):
         )
 
         if return_model:
-            referral
+            return referral
 
         return {'id': referral.id}
 
@@ -59,11 +60,13 @@ class ReferralService(BaseService):
             session: Session,
             code: str,
             client_id: int,
+            return_model: bool = False,
     ):
         return await self._create(
             creator=f'session_{session.id}',
             code=code,
             client_id=client_id,
+            return_model=return_model,
         )
 
     async def create_by_task(
@@ -77,6 +80,72 @@ class ReferralService(BaseService):
             client_id=client_id,
             return_model=True,
         )
+
+    @session_required(permissions=['referrals', 'partners'])
+    async def add_by_admin(
+            self,
+            session: Session,
+            code: str,
+            name: str,
+            phone: str,
+    ):
+        partner: Partner = await PartnerRepository.get_by_code(code=code, return_none=False)
+        promotion: Promotion = partner.promotion
+        client: Client = await ClientService().create_by_admin(
+            session=session,
+            fullname=name,
+            phone=phone,
+            return_model=True,
+        )
+        referral = await self.create_by_admin(
+            session=session,
+            code=code,
+            client_id=client.id,
+            return_model=True,
+        )
+
+        message_referral_bonus = promotion.sms_text_referral_bonus.format(
+            name=client.fullname,
+            referral_bonus=promotion.referrer_bonus,
+        )
+
+        await sms_request(
+            phone_number=client.phone,
+            message=message_referral_bonus,
+        )
+
+        await SmsService().create(
+            model='referral',
+            model_id=referral.id,
+            message=message_referral_bonus,
+        )
+
+        message_referrer_bonus = promotion.sms_text_referrer_bonus.format(
+            fullname=partner.client.fullname,
+            referrer_bonus=promotion.referrer_bonus,
+        )
+
+        await sms_request(
+            phone_number=partner.client.phone,
+            message=message_referrer_bonus,
+        )
+
+        await SmsService().create(
+            model='partner',
+            model_id=partner.id,
+            message=message_referrer_bonus,
+        )
+
+        return {
+            'partner': {
+                'fullname': partner.client.fullname,
+                'phone': partner.client.phone,
+            },
+            'promotion': {
+                'referral_bonus': promotion.referral_bonus,
+                'referrer_bonus': promotion.referrer_bonus,
+            }
+        }
 
     @session_required(permissions=['referrals'], can_root=True)
     async def delete_by_admin(

@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from peewee import DoesNotExist
+from peewee import DoesNotExist, fn
 
-from app.db.models import Partner, Promotion
+from app.db.models import Partner, Promotion, Client
 from app.repositories.base import BaseRepository
 from app.utils.exceptions import ModelAlreadyExist, ModelDoesNotExist
 
@@ -59,6 +59,31 @@ class PartnerRepository(BaseRepository):
                         'id_value': code,
                     },
                 )
+
+    @staticmethod
+    async def get_by_phone(phone: str, promotion_id: int):
+        query = (
+            Partner
+            .select()
+            .join(Client, on=(Partner.client == Client.id))
+            .join(Promotion, on=(Partner.promotion == Promotion.id))
+            .where(
+                Client.phone == phone,
+                Promotion.id == promotion_id,
+                Partner.is_deleted == False
+            )
+        )
+
+        try:
+            return query.get()
+        except DoesNotExist:
+            raise ModelDoesNotExist(
+                kwargs={
+                    'model': 'Partner',
+                    'id_type': 'phone, promotion_id',
+                    'id_value': [phone, promotion_id],
+                },
+            )
 
     @staticmethod
     async def get_list_by_promotion(promotion: Promotion):

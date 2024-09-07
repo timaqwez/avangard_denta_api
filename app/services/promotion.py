@@ -14,7 +14,8 @@
 # limitations under the License.
 #
 from datetime import datetime, timedelta
-from typing import Optional
+from re import findall
+from typing import Optional, re
 
 from app.services.lead import LeadService
 from app.services.partner import PartnerService
@@ -22,7 +23,7 @@ from app.services.base import BaseService
 from app.repositories import PromotionRepository, ReferralRepository, PartnerRepository, ClickRepository
 from app.db.models import Promotion, Session, Partner
 from app.utils.decorators import session_required
-from app.utils.exceptions import NoRequiredParameters
+from app.utils.exceptions import NoRequiredParameters, NoRequiredKeysForString
 
 
 class PromotionService(BaseService):
@@ -38,6 +39,34 @@ class PromotionService(BaseService):
             sms_text_referral_bonus: str = None,
             sms_text_referrer_bonus: str = None,
     ):
+        sms_texts_keys = {
+            'sms_text_partner_create': ['fullname', 'link', 'referrer_bonus', 'referral_bonus'],
+            'sms_text_for_referral': ['link', 'referral_bonus'],
+            'sms_text_referrer_bonus': ['fullname', 'referrer_bonus'],
+            'sms_text_referral_bonus': ['name', 'referral_bonus'],
+        }
+
+        self.check_required_keys(
+            string=sms_text_partner_create,
+            variable_name='sms_text_partner_create',
+            keys=sms_texts_keys['sms_text_partner_create'],
+        )
+        self.check_required_keys(
+            string=sms_text_for_referral,
+            variable_name='sms_text_for_referral',
+            keys=sms_texts_keys['sms_text_for_referral'],
+        )
+        self.check_required_keys(
+            string=sms_text_referrer_bonus,
+            variable_name='sms_text_referrer_bonus',
+            keys=sms_texts_keys['sms_text_referrer_bonus'],
+        )
+        self.check_required_keys(
+            string=sms_text_referral_bonus,
+            variable_name='sms_text_referral_bonus',
+            keys=sms_texts_keys['sms_text_referral_bonus'],
+        )
+
         promotion = await PromotionRepository().create(
             name=name,
             referrer_bonus=referrer_bonus,
@@ -110,17 +139,44 @@ class PromotionService(BaseService):
         if referrer_bonus is not None:
             action_parameters['referrer_bonus'] = referrer_bonus
 
+        sms_texts_keys = {
+            'sms_text_partner_create': ['fullname', 'link', 'referrer_bonus', 'referral_bonus'],
+            'sms_text_for_referral': ['link', 'referral_bonus'],
+            'sms_text_referrer_bonus': ['fullname', 'referrer_bonus'],
+            'sms_text_referral_bonus': ['name', 'referral_bonus'],
+        }
+
         if sms_text_partner_create:
+            self.check_required_keys(
+                string=sms_text_partner_create,
+                variable_name='sms_text_partner_create',
+                keys=sms_texts_keys['sms_text_partner_create'],
+            )
             action_parameters['sms_text_partner_create'] = sms_text_partner_create
 
         if sms_text_for_referral:
+            self.check_required_keys(
+                string=sms_text_for_referral,
+                variable_name='sms_text_for_referral',
+                keys=sms_texts_keys['sms_text_for_referral'],
+            )
             action_parameters['sms_text_for_referral'] = sms_text_for_referral
 
-        if sms_text_referral_bonus:
-            action_parameters['sms_text_referral_bonus'] = sms_text_referral_bonus
-
         if sms_text_referrer_bonus:
+            self.check_required_keys(
+                string=sms_text_referrer_bonus,
+                variable_name='sms_text_referrer_bonus',
+                keys=sms_texts_keys['sms_text_referrer_bonus'],
+            )
             action_parameters['sms_text_referrer_bonus'] = sms_text_referrer_bonus
+
+        if sms_text_referral_bonus:
+            self.check_required_keys(
+                string=sms_text_referral_bonus,
+                variable_name='sms_text_referral_bonus',
+                keys=sms_texts_keys['sms_text_referral_bonus'],
+            )
+            action_parameters['sms_text_referral_bonus'] = sms_text_referral_bonus
 
         await PromotionRepository().update(
             model=promotion,
@@ -169,20 +225,19 @@ class PromotionService(BaseService):
         promotion: Promotion = await PromotionRepository().get_by_id(id_=id_)
         partners: list[Partner] = await PartnerRepository().get_list_by_promotion(promotion)
         return {
-            'promotion': await self.generate_promotion_dict(promotion, partners)
+            'promotion': await self.generate_promotion_dict(promotion)
         }
 
     @session_required(permissions=['promotions'], return_model=False, can_root=True)
     async def get_list_by_admin(self):
         return {
             'promotions': [
-                await self.generate_promotion_dict(promotion,
-                                                   partners=await PartnerRepository().get_list_by_promotion(promotion))
+                await self.generate_promotion_dict(promotion)
                 for promotion in await PromotionRepository().get_list()
             ]
         }
 
-    async def generate_promotion_dict(self, promotion: Promotion, partners: list[Partner]):
+    async def generate_promotion_dict(self, promotion: Promotion):
         partners = await PartnerRepository().get_list_by_promotion(promotion=promotion)
         leads = []
         for partner in partners:
@@ -257,3 +312,15 @@ class PromotionService(BaseService):
                     if lead.created_at > datetime.now() - timedelta(days=1):
                         day_leads += 1
         return total_leads, week_leads, day_leads
+
+    @staticmethod
+    def check_required_keys(string: str, variable_name: str, keys: list[str]):
+        string_keys = findall(r'\{(\w+)\}', string)
+        for key in keys:
+            if key not in string_keys:
+                raise NoRequiredKeysForString(
+                    kwargs={
+                        'variable': variable_name,
+                        'key': key,
+                    }
+                )

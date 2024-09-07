@@ -29,7 +29,7 @@ from .partner import Partner
 from .role import Role
 from .role_permission import RolePermission
 from .session import Session
-
+from .sms import Sms
 
 models = (
     Account,
@@ -49,4 +49,5 @@ models = (
     Referral,
     Click,
     Lead,
+    Sms,
 )

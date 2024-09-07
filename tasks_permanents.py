@@ -15,23 +15,10 @@
 #
 
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
+import asyncio
 
-from app.utils.requests import request
-from config import settings
+from app.tasks.permanents import start_app
 
 
-async def sync_clients():
-    await request(
-        url=f'{settings.api_url}/tasks/clients/sync',
-        parameters={
-            'token': settings.tasks_token,
-        }
-    )
-
-
-async def sync_clients_task():
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(sync_clients(), trigger=CronTrigger.from_crontab('* * * * *'))
-    scheduler.start()
+loop = asyncio.get_event_loop()
+loop.run_until_complete(start_app())

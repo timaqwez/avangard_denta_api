@@ -32,3 +32,18 @@ services:
       - ./assets/articles:/app/assets/articles
     env_file:
       - .env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  tasks_permanents:
+    build:
+      dockerfile: tasks_permanents.dockerfile
+    env_file:
+      - .env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

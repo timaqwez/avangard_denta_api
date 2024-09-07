@@ -24,24 +24,17 @@ class ClientRepository(BaseRepository):
     model = Client
 
     async def create(self, **kwargs):
-        user_id = kwargs.get('user_id')
+        phone = kwargs.get('phone')
         try:
-            Client.get(Client.user_id == user_id)
+            client = Client.get(Client.phone == phone)
             raise ModelAlreadyExist(
                 kwargs={
                     'model': 'Client',
-                    'id_type': 'user_id',
-                    'id_value': user_id,
+                    'id_type': 'phone',
+                    'id_value': phone,
+                    'model_id': client.id,
                 }
             )
-        except DoesNotExist:
-            return self.model.create(**kwargs)
-
-    async def get_or_create(self, **kwargs):
-        user_id = kwargs.get('user_id')
-        try:
-            client = Client.get(Client.user_id == user_id)
-            return client
         except DoesNotExist:
             return self.model.create(**kwargs)
 

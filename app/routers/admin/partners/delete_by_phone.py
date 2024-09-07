@@ -13,19 +13,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from datetime import datetime, timezone
-
-from peewee import PrimaryKeyField, IntegerField, DateTimeField, CharField, BooleanField
-from .base import BaseModel
 
 
-class Client(BaseModel):
-    id = PrimaryKeyField()
-    fullname = CharField(max_length=128, null=False)
-    email = CharField(max_length=128, null=False)
-    phone = CharField(max_length=16, null=False)
-    is_partner = BooleanField(default=False)
-    created_at = DateTimeField(default=lambda: datetime.now(tz=timezone.utc))
+from pydantic import BaseModel, Field, PositiveInt
 
-    class Meta:
-        db_table = 'clients'
+from app.services import PartnerService
+from app.utils import Router, Response
+
+
+router = Router(
+    prefix='/delete/by-phone',
+)
+
+
+class PartnerDeleteByPhoneByAdminSchema(BaseModel):
+    token: str = Field(min_length=32, max_length=64)
+    phone: str = Field(max_length=16)
+    promotion_id: int = Field()
+
+
+@router.post()
+async def route(schema: PartnerDeleteByPhoneByAdminSchema):
+    result = await PartnerService().delete_by_phone_by_admin(
+        token=schema.token,
+        phone=schema.phone,
+        promotion_id=schema.promotion_id,
+    )
+    return Response(**result)

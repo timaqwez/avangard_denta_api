@@ -18,6 +18,7 @@ import binascii
 from base64 import b64decode
 from random import choice
 
+from app.services.sms import SmsService
 from app.services.base import BaseService
 from app.repositories import PartnerRepository, PromotionRepository, ClientRepository
 from app.db.models import Partner, Session, Client, Promotion
@@ -52,22 +53,38 @@ class PartnerService(BaseService):
             client=client,
         )
 
-        await sms_request(
-            phone_number=client.phone,
-            message=promotion.sms_text_partner_create.format(
-                fullname=' '.join(filter(None, [client.lastname, client.firstname, client.surname])),
-                link=f'{settings.referral_site_url}/{await generate_base64_string(code)}',
-                referrer_bonus=promotion.referrer_bonus,
-                referral_bonus=promotion.referral_bonus,
-            )
+        message_partner_create = promotion.sms_text_partner_create.format(
+            fullname=client.fullname,
+            link=f'{settings.referral_site_url}/{await generate_base64_string(code)}',
+            referrer_bonus=promotion.referrer_bonus,
+            referral_bonus=promotion.referral_bonus,
         )
 
         await sms_request(
             phone_number=client.phone,
-            message=promotion.sms_text_for_referral.format(
-                link=f'{settings.referral_site_url}/{await generate_base64_string(code)}',
-                referral_bonus=promotion.referral_bonus,
-            )
+            message=message_partner_create,
+        )
+
+        await SmsService().create(
+            model='partner',
+            model_id=partner.id,
+            message=message_partner_create,
+        )
+
+        message_partner_promo = promotion.sms_text_for_referral.format(
+            link=f'{settings.referral_site_url}/{await generate_base64_string(code)}',
+            referral_bonus=promotion.referral_bonus,
+        )
+
+        await sms_request(
+            phone_number=client.phone,
+            message=message_partner_promo
+        )
+
+        await SmsService().create(
+            model='partner',
+            model_id=partner.id,
+            message=message_partner_promo,
         )
 
         await self.create_action(
@@ -86,7 +103,7 @@ class PartnerService(BaseService):
 
         return {'id': partner.id}
 
-    @session_required(permissions=['partners'])
+    @session_required(permissions=['partners'], can_root=True)
     async def create_by_admin(
             self,
             session: Session,
@@ -131,7 +148,7 @@ class PartnerService(BaseService):
 
         return {}
 
-    @session_required(permissions=['partners'])
+    @session_required(permissions=['partners'], can_root=True)
     async def delete_by_admin(
             self,
             id_: int,
@@ -142,12 +159,36 @@ class PartnerService(BaseService):
             session=session,
         )
 
+    @session_required(permissions=['partners'], can_root=True)
+    async def delete_by_phone_by_admin(
+            self,
+            phone: str,
+            promotion_id: int,
+            session: Session,
+    ):
+        partner = await PartnerRepository().get_by_phone(phone=phone, promotion_id=promotion_id)
+        return await self._delete(
+            id_=partner.id,
+            session=session,
+        )
+
     @session_required(permissions=['partners'], return_model=False)
     async def get_by_admin(
             self,
             code: str,
     ):
         partner: Partner = await PartnerRepository().get_by_code(code)
+        return {
+            'partner': await self.generate_partner_dict(partner)
+        }
+
+    @session_required(permissions=['partners'], return_model=False, can_root=True)
+    async def get_by_phone_by_admin(
+            self,
+            phone: str,
+            promotion_id: int,
+    ):
+        partner: Partner = await PartnerRepository().get_by_phone(phone, promotion_id)
         return {
             'partner': await self.generate_partner_dict(partner)
         }
@@ -177,7 +218,7 @@ class PartnerService(BaseService):
         return {
             'id': partner.id,
             'code': partner.code,
-            'fullname': f'{partner.client.lastname or ""} {partner.client.firstname or ""} {partner.client.surname or ""}',
+            'fullname': partner.client.fullname,
             'email': partner.client.email,
             'phone': partner.client.phone,
             'referrals': len(partner.referrals),

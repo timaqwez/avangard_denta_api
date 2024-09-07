@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     root_token: str
     tasks_token: str
 
+    sync_partners_table_name: str
+
     items_per_page: int = 10
 
     model_config = SettingsConfigDict(env_file='.env')

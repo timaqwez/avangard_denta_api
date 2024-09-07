@@ -56,3 +56,8 @@ class WrongTasksToken(ApiException):
 class VariableDoesNotMatchFormat(ApiException):
     code = 1007
     message = "Variable {variable} does not match format"
+
+
+class NoRequiredKeysForString(ApiException):
+    code = 1008
+    message = "No required keys for {variable}. Missing key: {key}"

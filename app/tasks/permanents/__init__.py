@@ -18,14 +18,13 @@
 import asyncio
 import logging
 
-from app.tasks.permanents.tasks import sync_clients_task, sync_referrals_task
+from app.tasks.permanents.sync_gd import sync_gd
 
 prefix = '[start_app]'
 
 
 TASKS = [
-    sync_clients_task,
-    sync_referrals_task,
+    sync_gd,
 ]
 
 

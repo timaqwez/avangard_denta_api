@@ -19,6 +19,7 @@ from app.services.base import BaseService
 from app.repositories import ClickRepository, PartnerRepository, LeadRepository
 from app.db.models import Session, Lead
 from app.utils.decorators import session_required
+from app.utils.normalize_phone import normalize_phone_number
 
 
 class LeadService(BaseService):
@@ -27,15 +28,15 @@ class LeadService(BaseService):
             code: str,
             name: str,
             phone: str,
-            ip: str,
     ):
         partner = await PartnerRepository().get_by_code(code=code, return_none=False)
+
+        phone = normalize_phone_number(phone)
 
         lead = await LeadRepository().create(
             partner=partner,
             name=name,
             phone=phone,
-            ip=ip,
         )
 
         await self.create_action(

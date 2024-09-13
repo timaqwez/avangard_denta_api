@@ -30,7 +30,7 @@ class ReferralAddByAdminSchema(BaseModel):
     token: str = Field(min_length=32, max_length=64)
     code: str = Field(max_length=6)
     name: str = Field(min_length=1, max_length=32)
-    phone: str = Field(min_length=1, max_length=16)
+    phone: str = Field(min_length=1)
 
 
 @router.post()

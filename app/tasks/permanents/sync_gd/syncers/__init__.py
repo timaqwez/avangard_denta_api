@@ -21,7 +21,6 @@ from ..utils import google_sheets_api_client
 
 
 async def sync():
-
     table = await google_sheets_api_client.get_table_by_name(name=settings.sync_partners_table_name)
 
     await sync_partners(table=table)

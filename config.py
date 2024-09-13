@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     sms_request_url: str
     sms_request_login: str
     sms_request_password: str
+    sms_request_sender: str
 
     referral_site_url: str
 

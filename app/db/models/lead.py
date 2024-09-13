@@ -28,7 +28,6 @@ class Lead(BaseModel):
     partner = ForeignKeyField(model=Partner, backref='leads')
     name = CharField(max_length=256)
     phone = CharField(max_length=16)
-    ip = CharField(max_length=64)
     is_processed = BooleanField(default=False)
     created_at = DateTimeField(default=lambda: datetime.now(tz=timezone.utc))
 

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import logging
 
 from addict import Dict
 from aiohttp import ClientSession
@@ -24,14 +25,6 @@ from ..utils.google_sheets_api_client import google_sheets_api_client
 
 
 async def sync_partners(table: Spreadsheet):
-    is_changed = False
-
-    def remove_partner_by_phone(partners, phone_to_remove):
-        for partner in partners:
-            if partner['phone'] == phone_to_remove:
-                promotion['partners'].remove(partner)
-                return True
-            return False
 
     def find_expired_partners(promotion_partners, sheet_partners):
         promotion_partners_phones = {partner['phone'] for partner in promotion_partners if 'phone' in partner}
@@ -87,7 +80,8 @@ async def sync_partners(table: Spreadsheet):
                             client_id = data.error.kwargs.model_id
                         else:
                             client_id = data.id
-                        await session.post(
+                        logging.log(level=1, msg='Partner create...')
+                        response = await session.post(
                             url='/admin/partners/create',
                             json={
                                 'token': f'0:{settings.root_token}',
@@ -95,5 +89,6 @@ async def sync_partners(table: Spreadsheet):
                                 'client_id': client_id,
                             },
                         )
+                        logging.log(level=logging.INFO, msg=await response.json())
 
 

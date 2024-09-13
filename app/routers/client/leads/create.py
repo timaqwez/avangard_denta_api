@@ -15,7 +15,6 @@
 #
 
 
-from fastapi.requests import Request
 from pydantic import BaseModel, Field
 
 from app.services import LeadService
@@ -30,15 +29,14 @@ router = Router(
 class LeadCreateSchema(BaseModel):
     code: str = Field(max_length=6)
     name: str = Field(max_length=256)
-    phone: str = Field(max_length=16)
+    phone: str = Field()
 
 
 @router.post()
-async def route(schema: LeadCreateSchema, request: Request):
+async def route(schema: LeadCreateSchema):
     result = await LeadService().create(
         code=schema.code,
         phone=schema.phone,
         name=schema.name,
-        ip=request.client.host,
     )
     return Response(**result)

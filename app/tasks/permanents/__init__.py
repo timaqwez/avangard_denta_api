@@ -18,6 +18,8 @@
 import asyncio
 import logging
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 from app.tasks.permanents.sync_gd import sync_gd
 
 prefix = '[start_app]'
@@ -29,8 +31,9 @@ TASKS = [
 
 
 async def start_app() -> None:
+    scheduler = AsyncIOScheduler()
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
     while True:
         tasks_names = [task.get_name() for task in asyncio.all_tasks()]
-        [asyncio.create_task(coro=task(), name=task.__name__) for task in TASKS if task.__name__ not in tasks_names]
+        [asyncio.create_task(coro=task(scheduler), name=task.__name__) for task in TASKS if task.__name__ not in tasks_names]
         await asyncio.sleep(10 * 60)

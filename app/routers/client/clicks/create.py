@@ -32,9 +32,8 @@ class ClickCreateSchema(BaseModel):
 
 
 @router.post()
-async def route(schema: ClickCreateSchema, request: Request):
+async def route(schema: ClickCreateSchema):
     result = await ClickService().create(
         code=schema.code,
-        ip=request.client.host,
     )
     return Response(**result)

@@ -24,6 +24,7 @@ from app.repositories import ClientRepository
 from app.services.base import BaseService
 from app.utils.decorators import session_required, tasks_token_required
 from app.utils.exceptions import ModelAlreadyExist
+from app.utils.normalize_phone import normalize_phone_number
 from app.utils.sms_request import sms_request
 
 
@@ -38,6 +39,8 @@ class ClientService(BaseService):
             is_partner: bool = False,
             return_model: bool = False,
     ):
+        phone = normalize_phone_number(phone)
+
         client = await ClientRepository().create(
             fullname=fullname,
             email=email,

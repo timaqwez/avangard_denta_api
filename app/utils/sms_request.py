@@ -18,6 +18,7 @@ async def sms_request(phone_number: str, message: str):
                 params={
                     'phone': phone_number,
                     'text': message,
+                    'sender': settings.sms_request_sender,
                 },
                 headers={
                     "Authorization": basic_auth(settings.sms_request_login, settings.sms_request_password)

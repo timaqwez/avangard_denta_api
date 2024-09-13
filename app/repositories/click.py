@@ -22,17 +22,3 @@ from app.utils.exceptions import ModelAlreadyExist
 
 class ClickRepository(BaseRepository):
     model = Click
-
-    async def create(self, **kwargs):
-        ip = kwargs.get('ip')
-        try:
-            Click.get(Click.ip == ip)
-            raise ModelAlreadyExist(
-                kwargs={
-                    'model': 'Click',
-                    'id_type': 'ip',
-                    'id_value': ip,
-                }
-            )
-        except DoesNotExist:
-            return self.model.create(**kwargs)

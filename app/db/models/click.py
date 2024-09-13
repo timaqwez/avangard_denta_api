@@ -26,7 +26,6 @@ from .partner import Partner
 class Click(BaseModel):
     id = PrimaryKeyField()
     partner = ForeignKeyField(model=Partner, backref='clicks')
-    ip = CharField(max_length=64)
     created_at = DateTimeField(default=lambda: datetime.now(tz=timezone.utc))
 
     class Meta:

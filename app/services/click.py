@@ -25,13 +25,11 @@ class ClickService(BaseService):
     async def create(
             self,
             code: str,
-            ip: str,
     ):
         partner = await PartnerRepository().get_by_code(code=code)
 
         click = await ClickRepository().create(
             partner=partner,
-            ip=ip,
         )
 
         await self.create_action(
@@ -73,7 +71,6 @@ class ClickService(BaseService):
                 {
                     'id': click.id,
                     'partner': click.partner.id,
-                    'ip': click.ip,
                 } for click in await partner.clicks
             ]
         }

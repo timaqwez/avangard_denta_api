@@ -26,26 +26,15 @@ class LeadRepository(BaseRepository):
     model = Lead
 
     async def create(self, **kwargs):
-        ip = kwargs.get('ip')
         phone = kwargs.get('phone')
         try:
-            Lead.get(Lead.ip == ip)
+            Lead.get(Lead.phone == phone)
             raise ModelAlreadyExist(
                 kwargs={
                     'model': 'Lead',
-                    'id_type': 'ip',
-                    'id_value': ip,
+                    'id_type': 'phone',
+                    'id_value': phone,
                 }
             )
         except DoesNotExist:
-            try:
-                Lead.get(Lead.phone == phone)
-                raise ModelAlreadyExist(
-                    kwargs={
-                        'model': 'Lead',
-                        'id_type': 'phone',
-                        'id_value': phone,
-                    }
-                )
-            except DoesNotExist:
-                return self.model.create(**kwargs)
+            return self.model.create(**kwargs)

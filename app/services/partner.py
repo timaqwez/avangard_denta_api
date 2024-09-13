@@ -53,39 +53,36 @@ class PartnerService(BaseService):
             client=client,
         )
 
-        message_partner_create = promotion.sms_text_partner_create.format(
-            fullname=client.fullname,
-            link=f'{settings.referral_site_url}/{await generate_base64_string(code)}',
-            referrer_bonus=promotion.referrer_bonus,
-            referral_bonus=promotion.referral_bonus,
-        )
-
-        await sms_request(
-            phone_number=client.phone,
-            message=message_partner_create,
-        )
-
-        await SmsService().create(
-            model='partner',
-            model_id=partner.id,
-            message=message_partner_create,
-        )
-
-        message_partner_promo = promotion.sms_text_for_referral.format(
-            link=f'{settings.referral_site_url}/{await generate_base64_string(code)}',
-            referral_bonus=promotion.referral_bonus,
-        )
-
-        await sms_request(
-            phone_number=client.phone,
-            message=message_partner_promo
-        )
-
-        await SmsService().create(
-            model='partner',
-            model_id=partner.id,
-            message=message_partner_promo,
-        )
+        if promotion.sms_text_partner_create:
+            message_partner_create = promotion.sms_text_partner_create.format(
+                fullname=client.fullname,
+                link=f'{settings.referral_site_url}/{await generate_base64_string(code)}',
+                referrer_bonus=int(promotion.referrer_bonus),
+                referral_bonus=int(promotion.referral_bonus),
+            )
+            await sms_request(
+                phone_number=client.phone,
+                message=message_partner_create,
+            )
+            await SmsService().create(
+                model='partner',
+                model_id=partner.id,
+                message=message_partner_create,
+            )
+        if promotion.sms_text_for_referral:
+            message_partner_promo = promotion.sms_text_for_referral.format(
+                link=f'{settings.referral_site_url}/{await generate_base64_string(code)}',
+                referral_bonus=int(promotion.referral_bonus),
+            )
+            await sms_request(
+                phone_number=client.phone,
+                message=message_partner_promo
+            )
+            await SmsService().create(
+                model='partner',
+                model_id=partner.id,
+                message=message_partner_promo,
+            )
 
         await self.create_action(
             model=partner,

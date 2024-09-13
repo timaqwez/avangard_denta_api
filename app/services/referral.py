@@ -104,37 +104,39 @@ class ReferralService(BaseService):
             return_model=True,
         )
 
-        message_referral_bonus = promotion.sms_text_referral_bonus.format(
-            name=client.fullname,
-            referral_bonus=promotion.referrer_bonus,
-        )
+        if promotion.sms_text_referral_bonus:
+            message_referral_bonus = promotion.sms_text_referral_bonus.format(
+                name=client.fullname,
+                referral_bonus=int(promotion.referrer_bonus),
+            )
 
-        await sms_request(
-            phone_number=client.phone,
-            message=message_referral_bonus,
-        )
+            await sms_request(
+                phone_number=client.phone,
+                message=message_referral_bonus,
+            )
 
-        await SmsService().create(
-            model='referral',
-            model_id=referral.id,
-            message=message_referral_bonus,
-        )
+            await SmsService().create(
+                model='referral',
+                model_id=referral.id,
+                message=message_referral_bonus,
+            )
 
-        message_referrer_bonus = promotion.sms_text_referrer_bonus.format(
-            fullname=partner.client.fullname,
-            referrer_bonus=promotion.referrer_bonus,
-        )
+        if promotion.sms_text_referrer_bonus:
+            message_referrer_bonus = promotion.sms_text_referrer_bonus.format(
+                fullname=partner.client.fullname,
+                referrer_bonus=int(promotion.referrer_bonus),
+            )
 
-        await sms_request(
-            phone_number=partner.client.phone,
-            message=message_referrer_bonus,
-        )
+            await sms_request(
+                phone_number=partner.client.phone,
+                message=message_referrer_bonus,
+            )
 
-        await SmsService().create(
-            model='partner',
-            model_id=partner.id,
-            message=message_referrer_bonus,
-        )
+            await SmsService().create(
+                model='partner',
+                model_id=partner.id,
+                message=message_referrer_bonus,
+            )
 
         return {
             'partner': {
